@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">JcDemo</string>
+    <string name="single_page_print">Single page printing</string>
+    <string name="connect">Connect printer</string>
+    <string name="search">search</string>
+    <string name="no_bond">Not paired</string>
+    <string name="address">TextView</string>
+    <string name="name">TextView</string>
+    <string name="connecting">connecting</string>
+    <string name="multiple_page_print">Multiple page printing</string>
+    <string name="thermal">thermal</string>
+    <string name="thermal_transfer">Thermal transfer</string>
+    <string name="print_mode">Print mode:</string>
+    <string name="connected_printer">Printer connected</string>
+    <string name="available_printer">Available printers:</string>
+    <string name="image_print">Picture printing（Base64）</string>
+    <string name="bitmap_print">Bitmap Submit data for printing</string>
+    <string name="model_restrictions">Model restrictions</string>
+    <string name="all">All</string>
+    <string name="input_model">Enter model</string>
+    <string name="input">enter</string>
+    <string name="z401">Z401</string>
+    <string name="b21">B21</string>
+    <string name="b3s">B3S</string>
+    <string name="niimbot_sdk_demo">niimbot sdk demo</string>
+</resources>
