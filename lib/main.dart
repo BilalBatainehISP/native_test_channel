@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_scan_bluetooth/flutter_scan_bluetooth.dart';
 import 'package:native_test_channel/printer_manager.dart';
+import 'package:native_test_channel/printing_widget.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,9 +18,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return  MaterialApp(
       debugShowCheckedModeBanner: false,
       home: PrintersView(),
+     /// home: PrintingWidget(),
     );
   }
 }
@@ -35,7 +38,7 @@ class _PrintersViewState extends State<PrintersView> {
   late List<BluetoothDevice> _devices;
   BluetoothDevice? _selectedDevice;
 
-  late File imgFile;
+  late File imgFile = File("");
   bool isScanning = true;
 
   @override
@@ -44,7 +47,7 @@ class _PrintersViewState extends State<PrintersView> {
     _devices = [];
     _scanBluetooth = FlutterScanBluetooth();
     _startScan();
-    _initImg();
+   /// _initImg();
   }
 
 
@@ -77,16 +80,58 @@ class _PrintersViewState extends State<PrintersView> {
   bool _isDeviceAdded(BluetoothDevice device) => _devices.contains(device);
 
 
-  _initImg() async {
-    try {
-      ByteData byteData = await rootBundle.load("images/flutter.png");
-      Uint8List buffer = byteData.buffer.asUint8List();
-      String path = (await getTemporaryDirectory()).path;
-      imgFile = File("$path/img.png");
-      imgFile.writeAsBytes(buffer);
-    } catch (e) {
-      rethrow;
-    }
+  // _initImg() async {
+  //   try {
+  //     ByteData byteData = await rootBundle.load("images/flutter.png");
+  //     Uint8List buffer = byteData.buffer.asUint8List();
+  //     String path = (await getTemporaryDirectory()).path;
+  //     imgFile = File("$path/img.png");
+  //     imgFile.writeAsBytes(buffer);
+  //   } catch (e) {
+  //     rethrow;
+  //   }
+  // }
+
+  ScreenshotController screenshotController = ScreenshotController();
+
+  _captureImage()async{
+
+   await screenshotController.captureFromWidget(Column(
+      children: [
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("For Assistance ",style: TextStyle(fontSize: 20),),
+            Text("للحصول على المساعدة",style: TextStyle(fontSize: 20),),
+          ],
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset("images/flutter.png",scale: 9.5,),
+            const Text("Tel : 920004550",style: TextStyle(fontSize: 22,fontWeight: FontWeight.w600),),
+          ],
+        ),
+
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Terminal ID: ",style: TextStyle(fontSize: 20),),
+            Text("81818181",style: TextStyle(fontSize: 22,fontWeight: FontWeight.w600),),
+            Text(": رقم الجهاز",style: TextStyle(fontSize: 20,),),
+          ],
+        ),
+      ],
+    ),delay: const Duration(milliseconds: 10))
+        .then((Uint8List image)async{
+      final directory = await getApplicationDocumentsDirectory();
+      imgFile= await File('${directory.path}/image.png').create();
+      await imgFile.writeAsBytes(image);
+
+      print(imgFile.path);
+    });
+
   }
 
   @override
@@ -129,6 +174,7 @@ class _PrintersViewState extends State<PrintersView> {
                     children: [
                       MaterialButton(
                         onPressed: () {
+                          _captureImage();
                           PrinterManager.printImg(imgFile.path);
                         }, color: Colors.lightBlue,
                         child: const Text(

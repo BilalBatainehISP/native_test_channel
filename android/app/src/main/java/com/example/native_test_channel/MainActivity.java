@@ -3,8 +3,13 @@ package com.example.native_test_channel;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -13,8 +18,11 @@ import androidx.annotation.Nullable;
 
 import com.example.native_test_channel.utils.PrintUtil;
 import com.gengcon.www.jcprintersdk.callback.PrintCallback;
-import com.permissionx.guolindev.PermissionX;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -43,8 +51,10 @@ public class MainActivity extends FlutterActivity {
                             else if(call.method.equals(PrinterStrings.printCommand)){
                                 String imgPath = call.argument(PrinterStrings.imgPathArg);
                                 if(imgPath!=null){
+                                    System.out.println(imgPath);
                                     runOnUiThread(() -> Toast.makeText(this,"before print label" , Toast.LENGTH_LONG).show());
-                                    printLabel(1,1);
+                                   // printLabel(1,1);
+                                    printImage(imgPath);
                                 }
                             }
                         }
@@ -151,6 +161,117 @@ public class MainActivity extends FlutterActivity {
     }
 
 
+    /**
+     * Picture single page printing
+     */
+    private void printImage(String imgPath) {
+
+
+        //Reset error status variables
+        isError = false;
+        //Reset cancel printing status variable
+        isCancel = false;
+        //clear data
+        initPrintData();
+        //The unit of width and height is mm, and the image size is mm x magnification = pixel size
+        float width = 40;
+        float height = 20;
+        int orientation = 0;
+        pageCount = 1;
+        quantity = 1;
+        //Except for B 32 Z 401 T 8, the print Multiple (magnification) is 11.81, and the others are 8
+        String jsonInfo = "{  " + "\"printerImageProcessingInfo\": " + "{    " + "\"orientation\":" + orientation + "," + "   \"margin\": [      0,      0,      0,      0    ], " + "   \"printQuantity\": " + quantity + ",  " + "  \"horizontalOffset\": 0,  " + "  \"verticalOffset\": 0,  " + "  \"width\":" + width + "," + "   \"height\":" + height + "," + "\"printMultiple\":" + printMultiple + "," + "  \"epc\": \"\"  }}";
+
+        infoList.add(jsonInfo);
+        //Set canvas size
+
+
+
+        PrintUtil.getInstance().drawEmptyLabel(width, height, orientation, "");
+       /// String imageData = getJson(MainActivity.this, "image.json").replace("\"", "");
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Bitmap bitmap = BitmapFactory.decodeFile(imgPath);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        byte[] imageBytes = baos.toByteArray();
+        String imageString = Base64.encodeToString(imageBytes, Base64.DEFAULT);
+
+
+
+        PrintUtil.getInstance().drawLabelImage(imageString, 0, 0, width, height, 0, 1, 127);
+        //Generate print data
+        byte[] jsonByte = PrintUtil.getInstance().generateLabelJson();
+        //Convert to json Str
+        String jsonStr = new String(jsonByte);
+        jsonList.add(jsonStr);
+
+
+        int totalQuantity = pageCount * quantity;
+        //setTotalQuantityOfPrints Deprecated, the usage method has a clearer meaning.setTotalPrintQuantity
+        PrintUtil.getInstance().setTotalPrintQuantity(totalQuantity);
+        /*
+         * Parameter 1: Print density, Parameter 2: Paper type Parameter 3: Print mode
+         * Print density B50B50WT6T7T8 recommends setting 6 or 8, Z401B32 recommends setting 8, B3SB21B203B1 recommends setting 3
+         */
+
+        try {
+            PrintUtil.getInstance().startPrintJob(printDensity, 1, printMode, new PrintCallback() {
+                @Override
+                public void onProgress(int pageIndex, int quantityIndex, HashMap<String, Object> hashMap) {
+
+
+
+
+                }
+
+                @Override
+                public void onError(int i) {
+
+                }
+
+
+                @Override
+                public void onError(int errorCode, int printState) {
+
+
+                    Log.d(TAG, "test:onError");
+
+                    Log.d(TAG, String.valueOf(errorCode));
+                    isError = true;
+
+
+                }
+
+                @Override
+                public void onCancelJob(boolean isSuccess) {
+                    //Cancel printing success callback
+                    isCancel = true;
+                }
+
+                @Override
+                public void onBufferFree(int pageIndex, int bufferSize) {
+                    if (isError) {
+                        return;
+                    }
+                    if (pageIndex > pageCount) {
+                        return;
+                    }
+
+
+                    //pageIndex Print index of next page, buffer Size cache control
+                    PrintUtil.getInstance().commitData(jsonList, infoList);
+
+
+                }
+            });
+
+        }catch (Exception e){
+            Log.d(TAG, e.getMessage());
+        }
+
+
+    }
+
 
      void printLabel(int pages, int copies) {
 //        // Check if the printer is connected
@@ -220,24 +341,24 @@ public class MainActivity extends FlutterActivity {
 
                  @Override
                  public void onError(int i) {
-                     runOnUiThread(() -> Toast.makeText(MainActivity.this,"onError "+ i  , Toast.LENGTH_LONG).show());
+                   ///  runOnUiThread(() -> Toast.makeText(MainActivity.this,"onError "+ i  , Toast.LENGTH_LONG).show());
 
                  }
 
 
                  @Override
                  public void onError(int errorCode, int printState) {
-                     Log.d(TAG, "test：Report an error");
-                     isError = true;
-                     runOnUiThread(() -> Toast.makeText(MainActivity.this,"errorCode = "+ errorCode + " printState = "+ printState  , Toast.LENGTH_LONG).show());
-
+//                     Log.d(TAG, "test：Report an error");
+//                     isError = true;
+//                     runOnUiThread(() -> Toast.makeText(MainActivity.this,"errorCode = "+ errorCode + " printState = "+ printState  , Toast.LENGTH_LONG).show());
+//
 
                  }
 
                  @Override
                  public void onCancelJob(boolean isSuccess) {
-                     Log.d(TAG, "onCancelJob: " + isSuccess);
-                     isCancel = true;
+//                     Log.d(TAG, "onCancelJob: " + isSuccess);
+//                     isCancel = true;
                  }
 
                  /**
@@ -270,6 +391,8 @@ public class MainActivity extends FlutterActivity {
 
     }
 
+
+
     private void generatePrintDataIfNeeded(int bufferSize) {
         // If the number of pages of print data that has been generated is less than the total number of pages, continue to generate
         if (generatedPrintDataPageCount < pageCount) {
@@ -286,6 +409,27 @@ public class MainActivity extends FlutterActivity {
         }
     }
 
+    public String getJson(Context context, String fileName) {
+        // Used to store the JSON content read
+        StringBuilder stringBuilder = new StringBuilder();
+        try {
+            // Get the AssetManager object
+            AssetManager assetManager = context.getAssets();
+            //Use try-with-resources to ensure resources are automatically closed after use
+            try (BufferedReader bf = new BufferedReader(new InputStreamReader(assetManager.open(fileName)))) {
+                String line;
+                // Read JSON file content line by line
+                while ((line = bf.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Returns the read JSON content string
+        return stringBuilder.toString();
+    }
 
     private void generateMultiPagePrintData(int index, int cycleIndex) {
         while (index < cycleIndex) {
@@ -318,33 +462,33 @@ public class MainActivity extends FlutterActivity {
 
 
             // Set canvas size
-            PrintUtil.getInstance().drawEmptyLabel(width, height, orientation, "");
+          ///  PrintUtil.getInstance().drawEmptyLabel(width, height, orientation, "");
 
             //Draw graphics
-            PrintUtil.getInstance().drawLabelGraph(marginX + offsetX, marginY + offsetY, rectangleWidth, rectangleHeight, graphType, 0, 2, lineWidth, 1, new float[]{0.7575f, 0.7575f});
+       ///     PrintUtil.getInstance().drawLabelGraph(marginX + offsetX, marginY + offsetY, rectangleWidth, rectangleHeight, graphType, 0, 2, lineWidth, 1, new float[]{0.7575f, 0.7575f});
 
 
             //draw lines
-            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, marginY + lineHeight - lineWidth + offsetY, rectangleWidth, lineWidth, 0, 1, new float[]{});
-            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, secondLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
-            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, thirdLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
-            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, fourthLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
-
-            PrintUtil.getInstance().drawLabelLine(marginX + titleWidth - lineWidth + offsetX, marginY + lineHeight + offsetY, lineWidth, rectangleHeight - lineHeight, 0, 1, new float[]{});
+//            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, marginY + lineHeight - lineWidth + offsetY, rectangleWidth, lineWidth, 0, 1, new float[]{});
+//            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, secondLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
+//            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, thirdLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
+//            PrintUtil.getInstance().drawLabelLine(marginX + offsetX, fourthLineY, rectangleWidth, lineWidth, 0, 1, new float[]{});
+//
+//            PrintUtil.getInstance().drawLabelLine(marginX + titleWidth - lineWidth + offsetX, marginY + lineHeight + offsetY, lineWidth, rectangleHeight - lineHeight, 0, 1, new float[]{});
 
             //To draw a large title, use line wrapping mode 6, fixed width and height, and scale when the content is too large (the difference from mode 1 is that the text content is based on the budgeted font size, and when the budgeted text box width does not exceed the preset height after typesetting, the text will not be enlarged. Instead, the text is aligned with the text box according to the preset alignment)
-            PrintUtil.getInstance().drawLabelText(marginX * 3 + offsetX, marginY + offsetY, rectangleWidth - marginX * 4, lineHeight, "Wuhan Jingchen Intelligent Sign Technology Co., Ltd.", "Song Dynasty", fontSize * 1.5F, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+            PrintUtil.getInstance().drawLabelText(marginX  + 0F, marginY + 0F, 50.0F, 15.0F, "For Assistance", "Song Dynasty", 6.0F, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
             // Draw subtitles
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + offsetX, marginY + lineHeight - lineWidth + offsetY, titleWidth - marginX * 3, lineHeight, "model", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + offsetX, secondLineY, titleWidth - marginX * 3, lineHeight, "Asset Number", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + offsetX, thirdLineY, titleWidth - marginX * 3, lineHeight, "Activation date", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + offsetX, fourthLineY, titleWidth - marginX * 3, lineHeight, "Storage location", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+            PrintUtil.getInstance().drawLabelText(marginX + 0F , marginY + 15.0F, 25.0F, 20.0F, "Image", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+            PrintUtil.getInstance().drawLabelText(marginX + 18.0F, marginY + 15.0F, 25.0F, 20.0F, "Tel: 920004550", "Song Dynasty", 4.0F, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+            PrintUtil.getInstance().drawLabelText(marginX + 0F, marginY+ 35.0F, 52.0F, 17.0F, "Terminal ID: 81818181 :رقم الجهاز", "Song Dynasty", 6.0F, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+          ///  PrintUtil.getInstance().drawLabelText(marginX * 2.5f + offsetX, fourthLineY, titleWidth - marginX * 3, lineHeight, "Storage location", "Song Dynasty", fontSize, 0, 1, 1, 6, 0, 1, new boolean[]{false, false, false, false});
 
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, marginY + lineHeight - lineWidth + offsetY, contentWidth - marginX * 3, lineHeight, "DELL monitor E6540", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, secondLineY, contentWidth - marginX * 3, lineHeight, "C212004", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, thirdLineY, contentWidth - marginX * 3, lineHeight, "2014-06-10", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, fourthLineY, contentWidth - marginX * 3, lineHeight, (index + 1) + "Office No.", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
-
+//            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, marginY + lineHeight - lineWidth + offsetY, contentWidth - marginX * 3, lineHeight, "For Assistance", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+//            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, secondLineY, contentWidth - marginX * 3, lineHeight, "C212004", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+//            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, thirdLineY, contentWidth - marginX * 3, lineHeight, "2014-06-10", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+//            PrintUtil.getInstance().drawLabelText(marginX * 2.5f + titleWidth + offsetX, fourthLineY, contentWidth - marginX * 3, lineHeight, (index + 1) + "Office No.", "Song Dynasty", fontSize, 0, 0, 1, 6, 0, 1, new boolean[]{false, false, false, false});
+//
 
             //Generate print data
             byte[] jsonByte = PrintUtil.getInstance().generateLabelJson();
